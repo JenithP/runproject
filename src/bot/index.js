@@ -13,7 +13,9 @@ import { showMyRecord, showMyInfo } from './myrecord.js';
 export function createBot() {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   if (!token) throw new Error('TELEGRAM_BOT_TOKEN 이 설정되지 않았습니다.');
-  const bot = new Telegraf(token);
+  // webhookReply: false → 서버리스(Netlify)에서 응답이 한 박자 밀리는 문제 방지.
+  // 모든 ctx.reply 를 정식 Telegram API 호출(await)로 전송.
+  const bot = new Telegraf(token, { telegram: { webhookReply: false } });
 
   // ── 중복 업데이트 방지 (서버리스 webhook 재전송 대비) ──
   // 텔레그램이 같은 update 를 재전송해도 update_id 로 1회만 처리.
