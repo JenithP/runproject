@@ -17,8 +17,15 @@ import {
 } from '../services/events.js';
 import { broadcastTopEvent } from '../bot/announce.js';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const WEB_DIST = path.resolve(__dirname, '../../web/dist');
+// 번들 환경(Netlify 함수)에서는 import.meta.url 이 undefined 일 수 있어 방어적으로 계산.
+// 함수에서는 정적 서빙을 안 하므로 경로가 없어도 무방.
+let WEB_DIST;
+try {
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  WEB_DIST = path.resolve(here, '../../web/dist');
+} catch {
+  WEB_DIST = path.resolve(process.cwd(), 'web/dist');
+}
 
 export const WEBHOOK_PATH = '/telegram-webhook';
 
