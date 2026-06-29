@@ -2,6 +2,7 @@
 new-membership-*.json
 *firebase-adminsdk*.json
 serviceAccount*.json
+firebase-base64.txt
 .env
 .env.local
 .env.*.local

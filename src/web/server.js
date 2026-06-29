@@ -20,6 +20,8 @@ import { broadcastTopEvent } from '../bot/announce.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const WEB_DIST = path.resolve(__dirname, '../../web/dist');
 
+export const WEBHOOK_PATH = '/telegram-webhook';
+
 /** 간단 비밀번호 인증 미들웨어 */
 function adminAuth(req, res, next) {
   const pw = req.get('x-admin-password') || req.query.pw;
@@ -127,6 +129,9 @@ export function createWebApp(bot) {
 
   app.use('/api', api);
   app.get('/health', (_req, res) => res.json({ ok: true }));
+
+  // ── 텔레그램 webhook (POST). SPA fallback보다 먼저 등록 ──
+  if (bot) app.use(bot.webhookCallback(WEBHOOK_PATH));
 
   // ── 프론트엔드(빌드 결과) 정적 서빙 + SPA fallback ──
   if (fs.existsSync(WEB_DIST)) {

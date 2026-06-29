@@ -55,17 +55,33 @@ npm run dev
 | `PUBLIC_URL` | 배포 공개 URL(설정 시 webhook 모드) |
 | `PORT` / `TZ` | 포트 / 시간대(`Asia/Seoul`) |
 
-## Render 배포
-1. 이 저장소를 GitHub에 푸시 (`new-membership-*.json`은 `.gitignore`로 제외됨 — **절대 커밋 금지**)
-2. Render에서 **New Web Service** → 이 리포 연결 (`render.yaml` 자동 인식)
-3. 환경변수 입력:
+## Netlify 배포 (무료·카드 불필요)
+
+구조: **정적 React 관리자**(`web/dist`) + **함수 2개**
+- `netlify/functions/api.js` — 관리자 REST API + 텔레그램 webhook (Express를 `serverless-http`로 래핑)
+- `netlify/functions/announce-scheduled.js` — 매주 월요일 자동 공지 (Netlify Scheduled Function, `0 0 * * 1` UTC = 월 09:00 KST)
+
+라우팅은 `netlify.toml`이 처리: `/api/*` 와 `/telegram-webhook` → api 함수, 그 외 → SPA.
+
+### 배포 절차
+1. 저장소를 GitHub에 푸시 (`new-membership-*.json`, `.env` 는 `.gitignore`로 제외 — **절대 커밋 금지**)
+2. Netlify → **Add new site → Import an existing project** → 이 리포 연결 (`netlify.toml` 자동 인식)
+3. **Site configuration → Environment variables** 에 입력:
    - `TELEGRAM_BOT_TOKEN`, `GEMINI_API_KEY`, `ADMIN_PASSWORD`
-   - `FIREBASE_SERVICE_ACCOUNT_BASE64` — 서비스 계정 JSON을 base64로 변환해 입력
-     ```powershell
-     [Convert]::ToBase64String([IO.File]::ReadAllBytes("new-membership-e4a2c-firebase-adminsdk-fbsvc-6911fa7682.json"))
-     ```
-   - `PUBLIC_URL` — Render가 발급한 주소(예: `https://gangdong-running.onrender.com`)
-4. 배포 후 `PUBLIC_URL`이 설정되면 자동으로 텔레그램 **webhook 모드**로 동작
+   - `FIREBASE_SERVICE_ACCOUNT_BASE64` — `firebase-base64.txt` 내용 통째로 붙여넣기
+     (또는 PowerShell: `[Convert]::ToBase64String([IO.File]::ReadAllBytes("new-membership-e4a2c-firebase-adminsdk-fbsvc-6911fa7682.json"))`)
+   - `TZ` = `Asia/Seoul`
+4. 배포 완료 후, 사이트 주소(예: `https://kdrunners.netlify.app`)를 `.env` 의 `PUBLIC_URL` 에 넣고 **한 번만** webhook 등록:
+   ```bash
+   npm run set-webhook          # 등록
+   npm run set-webhook delete   # 해제(필요시)
+   ```
+5. 텔레그램에서 봇에게 `/start` → 동작 확인. 관리자 웹은 사이트 주소 그대로 접속.
+
+> 로컬 테스트는 `.env` 의 `PUBLIC_URL` 을 **비워두고** `npm run dev` (polling 모드).
+
+### (대안) Render 배포
+`render.yaml` 도 포함돼 있어 Render Web Service로도 배포 가능. 단 무료 플랜은 15분 미사용 시 인스턴스가 잠들어 첫 응답이 느리고, 인스턴스가 자는 동안 월요일 자동 공지(node-cron)가 누락될 수 있음.
 
 ## Firestore 데이터 모델
 - `users/{telegramId}` — 프로필 + `totals`(누적 통계·배지)
