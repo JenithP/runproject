@@ -5,6 +5,8 @@
 
 [build.environment]
   NODE_VERSION = "20"
+  # TZ 값("Asia/Seoul")은 비밀이 아니라 소스에 당연히 존재 → 시크릿 검사에서 제외
+  SECRETS_SCAN_OMIT_KEYS = "TZ"
 
 [functions]
   node_bundler = "esbuild"
