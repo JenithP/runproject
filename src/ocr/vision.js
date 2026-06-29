@@ -41,6 +41,8 @@ const SYSTEM = `너는 러닝 앱(나이키 런 클럽, 스트라바, 삼성헬�
  */
 export async function extractRunningData(buffer, mediaType = 'image/jpeg') {
   const base64 = buffer.toString('base64');
+  // 2.5 계열은 thinking 이 기본 ON → 출력 토큰을 추론이 소모해 JSON이 비는 문제 방지.
+  const isThinkingModel = /2\.5/.test(MODEL);
   const res = await client().models.generateContent({
     model: MODEL,
     contents: [
@@ -56,11 +58,17 @@ export async function extractRunningData(buffer, mediaType = 'image/jpeg') {
       systemInstruction: SYSTEM,
       responseMimeType: 'application/json',
       temperature: 0,
-      maxOutputTokens: 512,
+      maxOutputTokens: 1024,
+      ...(isThinkingModel ? { thinkingConfig: { thinkingBudget: 0 } } : {}),
     },
   });
 
-  return parseJson(res.text);
+  const text = res.text;
+  const finishReason = res.candidates?.[0]?.finishReason;
+  if (!text) {
+    console.warn('[ocr] 빈 응답. finishReason=', finishReason, 'usage=', JSON.stringify(res.usageMetadata));
+  }
+  return parseJson(text);
 }
 
 function parseJson(text) {
