@@ -7,9 +7,12 @@ export const BTN = {
   INFO: 'ℹ️ 내 정보',
 };
 
-/** 하단 상시 메뉴 */
+/** 하단 상시 메뉴 (persistent: 항상 키보드 자리에 고정 표시) */
 export const mainMenu = () =>
-  Markup.keyboard([[BTN.RECORD], [BTN.MY_RECORD, BTN.INFO]]).resize();
+  Markup.keyboard([[BTN.RECORD], [BTN.MY_RECORD, BTN.INFO]])
+    .resize()
+    .persistent()
+    .placeholder('메뉴를 선택하세요 🏃');
 
 /** 부서 선택 (인라인) — callback: dept:<부서명> */
 export const departmentInline = () =>
