@@ -1,4 +1,5 @@
 import { Telegraf } from 'telegraf';
+import { db, FieldValue } from '../config/firebase.js';
 import { getUser, setState } from '../services/users.js';
 import { mainMenu, BTN } from './keyboards.js';
 import {
@@ -13,6 +14,21 @@ export function createBot() {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   if (!token) throw new Error('TELEGRAM_BOT_TOKEN 이 설정되지 않았습니다.');
   const bot = new Telegraf(token);
+
+  // ── 중복 업데이트 방지 (서버리스 webhook 재전송 대비) ──
+  // 텔레그램이 같은 update 를 재전송해도 update_id 로 1회만 처리.
+  bot.use(async (ctx, next) => {
+    const id = ctx.update?.update_id;
+    if (id == null) return next();
+    try {
+      await db.collection('processed_updates').doc(String(id)).create({
+        at: FieldValue.serverTimestamp(),
+      });
+    } catch {
+      return; // 이미 처리된 update → 무시
+    }
+    return next();
+  });
 
   // /start
   bot.start(async (ctx) => {
