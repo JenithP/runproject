@@ -1,7 +1,7 @@
 # 🏃 강동 러닝프로젝트
 
 텔레그램 러닝 인증 챗봇 + 웹 관리자 대시보드.
-러닝 앱 스크린샷을 보내면 **Claude Vision OCR**이 거리·시간·날짜·칼로리를 자동 인식해
+러닝 앱 스크린샷을 보내면 **Google Gemini Vision(무료) OCR**이 거리·시간·날짜·칼로리를 자동 인식해
 Firestore에 누적 기록하고, 배지·등급·랭킹을 관리합니다.
 
 ## 주요 기능
@@ -21,7 +21,7 @@ Firestore에 누적 기록하고, 배지·등급·랭킹을 관리합니다.
 
 ## 기술 스택
 - 백엔드: Node.js (ESM), Telegraf, Express, Firebase Admin(Firestore), node-cron
-- OCR: Claude Vision (`@anthropic-ai/sdk`)
+- OCR: Google Gemini Vision — 무료 (`@google/genai`)
 - 프론트엔드: React + Vite
 
 ## 로컬 실행
@@ -47,8 +47,8 @@ npm run dev
 | 변수 | 설명 |
 |---|---|
 | `TELEGRAM_BOT_TOKEN` | @BotFather 토큰 |
-| `ANTHROPIC_API_KEY` | Claude Vision API 키 |
-| `ANTHROPIC_MODEL` | 비전 모델 (기본 `claude-opus-4-8`) |
+| `GEMINI_API_KEY` | Google Gemini API 키 (무료, aistudio.google.com/apikey) |
+| `GEMINI_MODEL` | 비전 모델 (기본 `gemini-2.5-flash`) |
 | `GOOGLE_APPLICATION_CREDENTIALS` | 서비스 계정 JSON 경로(로컬) |
 | `FIREBASE_SERVICE_ACCOUNT_BASE64` | 서비스 계정 JSON을 base64로(배포) |
 | `ADMIN_PASSWORD` | 웹 관리자 비밀번호 |
@@ -59,7 +59,7 @@ npm run dev
 1. 이 저장소를 GitHub에 푸시 (`new-membership-*.json`은 `.gitignore`로 제외됨 — **절대 커밋 금지**)
 2. Render에서 **New Web Service** → 이 리포 연결 (`render.yaml` 자동 인식)
 3. 환경변수 입력:
-   - `TELEGRAM_BOT_TOKEN`, `ANTHROPIC_API_KEY`, `ADMIN_PASSWORD`
+   - `TELEGRAM_BOT_TOKEN`, `GEMINI_API_KEY`, `ADMIN_PASSWORD`
    - `FIREBASE_SERVICE_ACCOUNT_BASE64` — 서비스 계정 JSON을 base64로 변환해 입력
      ```powershell
      [Convert]::ToBase64String([IO.File]::ReadAllBytes("new-membership-e4a2c-firebase-adminsdk-fbsvc-6911fa7682.json"))

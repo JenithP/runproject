@@ -11,10 +11,10 @@ services:
     envVars:
       - key: TELEGRAM_BOT_TOKEN
         sync: false
-      - key: ANTHROPIC_API_KEY
+      - key: GEMINI_API_KEY
         sync: false
-      - key: ANTHROPIC_MODEL
-        value: claude-opus-4-8
+      - key: GEMINI_MODEL
+        value: gemini-2.5-flash
       - key: FIREBASE_SERVICE_ACCOUNT_BASE64
         sync: false
       - key: ADMIN_PASSWORD
