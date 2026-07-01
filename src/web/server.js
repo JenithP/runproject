@@ -4,7 +4,12 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 
-import { rangeLeaderboard, departmentStats, dailySeries } from '../services/stats.js';
+import {
+  rangeLeaderboard,
+  departmentStats,
+  dailySeries,
+  listRecordsInRange,
+} from '../services/stats.js';
 import { getSettings, saveSettings } from '../services/config.js';
 import {
   listEvents,
@@ -81,6 +86,13 @@ export function createWebApp(bot) {
     asyncH(async (req, res) => {
       const { start, end } = req.query;
       res.json(await dailySeries({ start, end }));
+    })
+  );
+  api.get(
+    '/stats/records',
+    asyncH(async (req, res) => {
+      const { start, end, gender, department } = req.query;
+      res.json(await listRecordsInRange({ start, end, gender, department }));
     })
   );
 

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import * as XLSX from 'xlsx';
 import { api } from '../api.js';
 import { todayStr, fmtDuration, DEPARTMENTS, GENDERS } from '../lib.js';
 
@@ -45,6 +46,37 @@ export default function Dashboard() {
     setEnd(todayStr(0));
   };
 
+  const [exporting, setExporting] = useState(false);
+  async function downloadExcel() {
+    setExporting(true);
+    setErr('');
+    try {
+      const rows = await api.records({ start, end, gender, department });
+      const data = rows.map((r) => ({
+        날짜: r.date,
+        이름: r.name,
+        부서: r.department,
+        성별: r.gender,
+        종류: r.type,
+        '거리(km)': r.distance,
+        '시간(분)': r.durationMin,
+        걸음수: r.steps,
+        칼로리: r.calories,
+        페이스: r.pace,
+        인정여부: r.certified,
+        사유: r.certReason,
+      }));
+      const ws = XLSX.utils.json_to_sheet(data);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, '러닝기록');
+      XLSX.writeFile(wb, `강동러닝_${start}_${end}.xlsx`);
+    } catch (e) {
+      setErr(e.message);
+    } finally {
+      setExporting(false);
+    }
+  }
+
   const maxDaily = Math.max(1, ...daily.map((d) => d.distance));
   const maxDept = Math.max(1, ...depts.map((d) => d.distance));
 
@@ -89,6 +121,9 @@ export default function Dashboard() {
           </label>
           <button className="btn primary" onClick={load} disabled={loading}>
             {loading ? '조회 중...' : '조회'}
+          </button>
+          <button className="btn outline" onClick={downloadExcel} disabled={exporting}>
+            {exporting ? '내려받는 중...' : '⬇ 엑셀 다운로드'}
           </button>
         </div>
         <div className="presets">

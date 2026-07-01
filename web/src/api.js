@@ -28,6 +28,7 @@ export const api = {
   leaderboard: (q) => req('GET', `/api/stats/leaderboard?${new URLSearchParams(clean(q))}`),
   departments: (q) => req('GET', `/api/stats/departments?${new URLSearchParams(clean(q))}`),
   daily: (q) => req('GET', `/api/stats/daily?${new URLSearchParams(clean(q))}`),
+  records: (q) => req('GET', `/api/stats/records?${new URLSearchParams(clean(q))}`),
 
   listEvents: () => req('GET', '/api/events'),
   createEvent: (b) => req('POST', '/api/events', b),

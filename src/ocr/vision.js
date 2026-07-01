@@ -23,15 +23,19 @@ const SYSTEM = `너는 러닝 앱(나이키 런 클럽, 스트라바, 삼성헬�
   "date": "YYYY-MM-DD"|null,       // 스크린샷에 보이는 운동 날짜. 없으면 null.
   "calories": number|null,         // 소모 칼로리(kcal).
   "pace": string|null,             // 평균 페이스 표시값 그대로 (예: "5'42\\"/km").
+  "steps": number|null,            // 걸음 수(걷기앱: 삼성헬스/애플건강/구글핏 등). 없으면 null.
+  "activity_type": "run"|"walk"|"other"|null, // 러닝/달리기=run, 걷기/워킹=walk.
   "app": string|null,              // 추정 앱 이름.
   "confidence": "high"|"medium"|"low" // 수치 판독 신뢰도.
 }
 
 규칙:
 - 화면에 명확히 보이는 값만 채운다. 추측 금지. 안 보이면 null.
-- 큰 글씨로 강조된 메인 거리 숫자를 distance_km로 본다.
+- 큰 글씨로 강조된 메인 숫자(거리 또는 걸음수)를 우선 판독한다.
+- 걸음 수가 크게 표시된 걷기/만보기 화면이면 activity_type="walk" 이고 steps 를 채운다.
+- 달리기 기록이면 activity_type="run".
 - 시간은 시:분:초 또는 분:초 형태를 초로 변환.
-- 러닝 기록 화면이 아니거나 수치를 못 읽으면 모든 값 null, confidence "low".`;
+- 운동 기록 화면이 아니거나 수치를 못 읽으면 모든 값 null, confidence "low".`;
 
 /**
  * 이미지 버퍼에서 러닝 기록 추출 (Google Gemini Vision).
@@ -83,6 +87,8 @@ function parseJson(text) {
       date: obj.date || null,
       calories: numOrNull(obj.calories),
       pace: obj.pace || null,
+      steps: numOrNull(obj.steps),
+      activity_type: obj.activity_type || null,
       app: obj.app || null,
       confidence: obj.confidence || 'low',
     };
@@ -101,6 +107,8 @@ const emptyResult = () => ({
   date: null,
   calories: null,
   pace: null,
+  steps: null,
+  activity_type: null,
   app: null,
   confidence: 'low',
 });

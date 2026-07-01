@@ -2,7 +2,8 @@ import { getUser } from '../services/users.js';
 import { weeklyCount, getRankings } from '../services/stats.js';
 import { getSettings, computeTier } from '../services/config.js';
 import { badgesByIds } from '../services/badges.js';
-import { now, formatDuration } from '../lib/date.js';
+import { now, formatDuration, formatPace } from '../lib/date.js';
+import { WALK_DEPARTMENT } from '../config/constants.js';
 import { mainMenu } from './keyboards.js';
 
 /** /내기록 — 통계 카드 */
@@ -39,9 +40,17 @@ export async function showMyRecord(ctx) {
   lines.push('누적 시간');
   lines.push(`${formatDuration(t.totalTime || 0)}`);
   lines.push('');
+  lines.push('평균 페이스');
+  lines.push(`${formatPace((t.totalDistance || 0) > 0 ? (t.totalTime || 0) / t.totalDistance : 0)}`);
+  lines.push('');
   lines.push('누적 칼로리');
   lines.push(`${Math.round(t.totalCalories || 0)}kcal`);
   lines.push('');
+  if (user.department === WALK_DEPARTMENT && (t.totalSteps || 0) > 0) {
+    lines.push('누적 걸음');
+    lines.push(`${Math.round(t.totalSteps).toLocaleString()}보`);
+    lines.push('');
+  }
   lines.push('이번주');
   lines.push(`${week}회 / 목표 ${settings.weeklyGoal}회`);
   lines.push('');

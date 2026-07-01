@@ -47,4 +47,12 @@ export function formatDuration(sec) {
   return parts.join(' ') || '0분';
 }
 
+/** 평균 페이스: 초/km → "5'42"/km" */
+export function formatPace(secPerKm) {
+  if (!secPerKm || secPerKm <= 0 || !isFinite(secPerKm)) return '-';
+  const m = Math.floor(secPerKm / 60);
+  const s = Math.round(secPerKm % 60);
+  return `${m}'${String(s).padStart(2, '0')}"/km`;
+}
+
 export { dayjs };

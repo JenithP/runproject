@@ -35,6 +35,34 @@ export const DEFAULT_TIERS = [
 // 주간 목표 인증 횟수 기본값 (config/settings.weeklyGoal 로 덮어씀)
 export const DEFAULT_WEEKLY_GOAL = 3;
 
+// ── 걷기앱 인정 부서 ───────────────────────────────────
+// 이 부서만 걷기앱(걸음수) 인증 허용. 그 외는 달리기만.
+export const WALK_DEPARTMENT = '자문회';
+
+// ── 인증 조건 (하나라도 미달이면 불인정) ────────────────
+export const CERT = {
+  minMinutes: 20, // 운동시간 20분 이하 → 불인정
+  minDistanceKm: 2, // (달리기) 거리 2km 이하 → 불인정
+  minSteps: 4000, // (걷기) 걸음 4000보 이하 → 불인정
+};
+
+/**
+ * 인증 여부 판정.
+ * @param {'run'|'walk'} type
+ * @param {{distance:number, durationSec:number, steps:number}} d
+ * @returns {{certified:boolean, reason:string|null}}
+ */
+export function evaluateCertification(type, d) {
+  const minutes = (Number(d.durationSec) || 0) / 60;
+  if (minutes <= CERT.minMinutes) return { certified: false, reason: 'time' };
+  if (type === 'walk') {
+    if ((Number(d.steps) || 0) <= CERT.minSteps) return { certified: false, reason: 'steps' };
+  } else {
+    if ((Number(d.distance) || 0) <= CERT.minDistanceKm) return { certified: false, reason: 'distance' };
+  }
+  return { certified: true, reason: null };
+}
+
 // ── Firestore 컬렉션 이름 ──────────────────────────────
 export const COL = {
   USERS: 'users',

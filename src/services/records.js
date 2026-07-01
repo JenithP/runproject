@@ -15,13 +15,15 @@ export async function getUserRecords(userId) {
     .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
 }
 
-/** 기록 리스트로부터 누적 통계 전체 재계산 */
-function recomputeTotals(list, prevBadges = []) {
+/** 기록 리스트로부터 누적 통계 전체 재계산 (인정된 기록만 집계) */
+function recomputeTotals(all, prevBadges = []) {
+  const list = all.filter((r) => r.certified !== false); // 불인정 제외
   const totals = {
     totalCount: list.length,
     totalDistance: 0,
     totalTime: 0,
     totalCalories: 0,
+    totalSteps: 0,
     maxDistance: 0,
     currentStreak: 0,
     longestStreak: 0,
@@ -33,6 +35,7 @@ function recomputeTotals(list, prevBadges = []) {
     totals.totalDistance += Number(r.distance) || 0;
     totals.totalTime += Number(r.durationSec) || 0;
     totals.totalCalories += Number(r.calories) || 0;
+    totals.totalSteps += Number(r.steps) || 0;
     if ((Number(r.distance) || 0) > totals.maxDistance) totals.maxDistance = Number(r.distance) || 0;
   }
   totals.totalDistance = Math.round(totals.totalDistance * 100) / 100;
@@ -71,7 +74,9 @@ export async function addRecord(userId, data) {
 
   const prevMax = user.totals?.maxDistance || 0;
   const distance = Number(data.distance) || 0;
-  const isPB = distance > prevMax && distance > 0;
+  const certified = data.certified !== false; // 기본 인정
+  // PB는 인정된 달리기에서만
+  const isPB = certified && data.type !== 'walk' && distance > prevMax && distance > 0;
 
   const recordDoc = {
     userId: String(userId),
@@ -79,17 +84,21 @@ export async function addRecord(userId, data) {
     department: user.department || null,
     gender: user.gender || null,
     date: data.date, // YYYY-MM-DD
+    type: data.type || 'run', // 'run' | 'walk'
     distance,
     durationSec: Number(data.durationSec) || 0,
     calories: Number(data.calories) || 0,
+    steps: Number(data.steps) || 0,
     pace: data.pace || null,
+    certified, // 인증 여부
+    certReason: data.certReason || null, // 불인정 사유(time/steps/distance)
     photoFileId: data.photoFileId || null,
     raw: data.raw || null,
     createdAt: FieldValue.serverTimestamp(),
   };
   const ref = await records().add(recordDoc);
 
-  // 전체 재계산
+  // 전체 재계산 (인정된 기록만 누적)
   const list = await getUserRecords(userId);
   const prevBadges = user.totals?.badges || [];
   const totals = recomputeTotals(list, prevBadges);
@@ -98,5 +107,5 @@ export async function addRecord(userId, data) {
 
   await users().doc(String(userId)).set({ totals }, { merge: true });
 
-  return { record: { id: ref.id, ...recordDoc }, totals, newlyEarned, isPB };
+  return { record: { id: ref.id, ...recordDoc }, totals, newlyEarned, isPB, certified };
 }

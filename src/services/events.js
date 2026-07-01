@@ -34,10 +34,10 @@ export async function deleteEvent(id) {
   await events().doc(id).delete();
 }
 
-/** 자동 공지용 최상단 활성 이벤트 */
+/** 자동 공지용 최상단 활성 이벤트. 인메모리 필터로 복합 인덱스 불필요. */
 export async function getTopEvent() {
-  const snap = await events().where('active', '==', true).orderBy('order', 'asc').limit(1).get();
-  return snap.empty ? null : { id: snap.docs[0].id, ...snap.docs[0].data() };
+  const all = await listEvents(); // order 오름차순 (단일 필드 정렬 → 인덱스 불필요)
+  return all.find((e) => e.active) || null;
 }
 
 // ── 공지 (카드형, 기간 있음) ────────────────────────────

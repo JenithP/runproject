@@ -3,6 +3,13 @@ import { addRecord } from '../services/records.js';
 import { extractRunningData } from '../ocr/vision.js';
 import { toDateKey, formatDuration } from '../lib/date.js';
 import { mainMenu, cancelInline, BTN } from './keyboards.js';
+import { WALK_DEPARTMENT, CERT, evaluateCertification } from '../config/constants.js';
+
+const CERT_REASON_TEXT = {
+  time: `· 운동시간이 ${CERT.minMinutes}분을 넘어야 인정돼요`,
+  distance: `· 달리기 거리가 ${CERT.minDistanceKm}km를 넘어야 인정돼요`,
+  steps: `· 걸음이 ${CERT.minSteps.toLocaleString()}보를 넘어야 인정돼요`,
+};
 
 /** "러닝 기록하기" — 사진 요청 */
 export async function startRunning(ctx) {
@@ -45,23 +52,41 @@ export async function handlePhoto(ctx) {
 
     const data = await extractRunningData(buffer, 'image/jpeg');
 
-    if (!data.distance_km || data.distance_km <= 0) {
+    // 걷기앱은 자문회만 인정. 종류(달리기/걷기) 판정
+    const isWalkDept = user.department === WALK_DEPARTMENT;
+    const looksWalk = data.activity_type === 'walk' || (data.steps > 0 && !(data.distance_km > 0));
+    const type = isWalkDept && looksWalk ? 'walk' : 'run';
+
+    // 판독 실패
+    const unreadable = type === 'walk' ? !(data.steps > 0) : !(data.distance_km > 0);
+    if (unreadable) {
       await ctx.telegram.deleteMessage(ctx.chat.id, thinking.message_id).catch(() => {});
       await ctx.reply(
-        '😅 러닝 기록을 읽지 못했어요.\n\n' +
-          '거리가 잘 보이는 러닝 앱 결과 화면을 다시 보내주세요.',
+        isWalkDept
+          ? '😅 기록을 읽지 못했어요.\n\n걸음 수 또는 거리가 잘 보이는 화면을 다시 보내주세요.'
+          : '😅 러닝 기록을 읽지 못했어요.\n\n거리가 잘 보이는 러닝 앱 결과 화면을 다시 보내주세요.',
         cancelInline()
       );
       return;
     }
 
     const dateKey = toDateKey(data.date);
-    const saved = await addRecord(ctx.from.id, {
+    const { certified, reason } = evaluateCertification(type, {
       distance: data.distance_km,
+      durationSec: data.duration_seconds,
+      steps: data.steps,
+    });
+
+    const saved = await addRecord(ctx.from.id, {
+      type,
+      distance: data.distance_km || 0,
       durationSec: data.duration_seconds || 0,
       calories: data.calories || 0,
+      steps: data.steps || 0,
       date: dateKey,
       pace: data.pace,
+      certified,
+      certReason: reason,
       photoFileId: fileId,
       raw: data,
     });
@@ -69,16 +94,36 @@ export async function handlePhoto(ctx) {
     await ctx.telegram.deleteMessage(ctx.chat.id, thinking.message_id).catch(() => {});
     await setState(ctx.from.id, { step: 'done' });
 
-    const t = saved.totals;
-    let msg =
-      '✅ 인증 완료!\n' +
+    // 판독 내역
+    const detail =
       '—————————————————\n' +
       `📅 날짜  ${dateKey}\n` +
-      `📏 거리  ${data.distance_km} km\n` +
+      (type === 'walk'
+        ? `👟 걸음  ${(data.steps || 0).toLocaleString()}보\n` +
+          (data.distance_km ? `📏 거리  ${data.distance_km} km\n` : '')
+        : `📏 거리  ${data.distance_km} km\n`) +
       `⏱️ 시간  ${formatDuration(data.duration_seconds)}\n` +
       (data.calories ? `🔥 칼로리  ${data.calories} kcal\n` : '') +
       (data.pace ? `🏃 페이스  ${data.pace}\n` : '') +
-      '—————————————————\n' +
+      '—————————————————';
+
+    if (!certified) {
+      await ctx.reply(
+        '아이쿠, 이 기록으로 인증이 조금 어렵네요~ 조금 더 뛰어보시는 건 어떨까요? 🥲\n' +
+          detail +
+          '\n' +
+          (CERT_REASON_TEXT[reason] || '') +
+          '\n(이 기록은 불인정으로 저장돼요)',
+        mainMenu()
+      );
+      return;
+    }
+
+    const t = saved.totals;
+    let msg =
+      `✅ 인증 완료!${type === 'walk' ? ' (걷기)' : ''}\n` +
+      detail +
+      '\n' +
       `누적 인증  ${t.totalCount}회 · 누적 거리  ${t.totalDistance}km`;
 
     if (saved.isPB) msg += '\n\n🎉 개인 최고 거리(PB)를 갱신했어요!';
