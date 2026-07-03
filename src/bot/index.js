@@ -7,7 +7,7 @@ import {
   handleRegistrationText,
   setupRegistrationActions,
 } from './registration.js';
-import { startRunning, handlePhoto } from './running.js';
+import { startRunning, handlePhoto, setupRunningActions } from './running.js';
 import { showMyRecord, showMyInfo } from './myrecord.js';
 
 export function createBot() {
@@ -51,6 +51,8 @@ export function createBot() {
 
   // 인라인 콜백 (부서/성별)
   setupRegistrationActions(bot);
+  // 인라인 콜백 (캘린더 날짜 선택)
+  setupRunningActions(bot);
 
   // 취소
   bot.action('cancel', async (ctx) => {
@@ -74,6 +76,10 @@ export function createBot() {
     if (!user.registered) {
       const handled = await handleRegistrationText(ctx, user);
       if (!handled) await ctx.reply('등록을 완료해주세요. /start 를 입력하세요.');
+      return;
+    }
+    if (user.state?.step === 'awaiting_date') {
+      await ctx.reply('📅 위 캘린더에서 운동한 날짜를 먼저 선택해주세요.');
       return;
     }
     if (user.state?.step === 'awaiting_photo') {

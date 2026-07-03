@@ -2,7 +2,7 @@ import { getUser, setState } from '../services/users.js';
 import { addRecord } from '../services/records.js';
 import { extractRunningData } from '../ocr/vision.js';
 import { toDateKey, formatDuration } from '../lib/date.js';
-import { mainMenu, cancelInline, BTN } from './keyboards.js';
+import { mainMenu, cancelInline, calendarInline, BTN } from './keyboards.js';
 import { WALK_DEPARTMENT, CERT, evaluateCertification } from '../config/constants.js';
 
 const CERT_REASON_TEXT = {
@@ -11,20 +11,50 @@ const CERT_REASON_TEXT = {
   steps: `· 걸음이 ${CERT.minSteps.toLocaleString()}보를 넘어야 인정돼요`,
 };
 
-/** "러닝 기록하기" — 사진 요청 */
+/** "러닝 기록하기" — 먼저 캘린더로 날짜 선택 */
 export async function startRunning(ctx) {
   const user = await getUser(ctx.from.id);
   if (!user?.registered) {
     await ctx.reply('먼저 /start 로 등록을 완료해주세요.');
     return;
   }
-  await setState(ctx.from.id, { step: 'awaiting_photo' });
-  await ctx.reply(
-    '📸 러닝 앱 스크린샷을 보내주세요.\n\n' +
-      '갤러리에서 나이키 런·스트라바·삼성헬스 등 기록 화면을 선택해 전송하면\n' +
-      '거리·시간·날짜·칼로리를 자동으로 읽어옵니다.',
-    cancelInline()
-  );
+  await setState(ctx.from.id, { step: 'awaiting_date' });
+  await ctx.reply('📅 운동한 날짜를 선택해주세요.', calendarInline());
+}
+
+/** 러닝 관련 인라인 콜백 (캘린더 날짜 선택) */
+export function setupRunningActions(bot) {
+  // 빈 칸/헤더 등 무반응 버튼
+  bot.action('cal:ignore', (ctx) => ctx.answerCbQuery().catch(() => {}));
+
+  // 달 이동
+  bot.action(/^cal:nav:(\d{4}-\d{2})$/, async (ctx) => {
+    await ctx.answerCbQuery().catch(() => {});
+    await ctx
+      .editMessageReplyMarkup(calendarInline(ctx.match[1]).reply_markup)
+      .catch(() => {});
+  });
+
+  // 날짜 선택 → 사진 요청 단계로
+  bot.action(/^cal:day:(\d{4}-\d{2}-\d{2})$/, async (ctx) => {
+    const user = await getUser(ctx.from.id);
+    if (!user?.registered) {
+      await ctx.answerCbQuery('먼저 /start 로 등록을 완료해주세요.').catch(() => {});
+      return;
+    }
+    const dateKey = ctx.match[1];
+    await setState(ctx.from.id, { step: 'awaiting_photo', selectedDate: dateKey });
+    await ctx.answerCbQuery(`${dateKey} 선택됨`).catch(() => {});
+    await ctx
+      .editMessageText(
+        `📅 선택한 날짜: ${dateKey}\n\n` +
+          '📸 이제 러닝 앱 스크린샷을 보내주세요.\n' +
+          '나이키 런·스트라바·삼성헬스 등 기록 화면을 전송하면\n' +
+          '거리·시간·칼로리를 자동으로 읽어옵니다.',
+        cancelInline()
+      )
+      .catch(() => {});
+  });
 }
 
 /** 사진 수신 처리 */
@@ -70,7 +100,8 @@ export async function handlePhoto(ctx) {
       return;
     }
 
-    const dateKey = toDateKey(data.date);
+    // 캘린더로 사용자가 선택한 날짜 우선. 없으면 OCR 추출 날짜.
+    const dateKey = user.state?.selectedDate || toDateKey(data.date);
     const { certified, reason } = evaluateCertification(type, {
       distance: data.distance_km,
       durationSec: data.duration_seconds,
