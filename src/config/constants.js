@@ -39,28 +39,32 @@ export const DEFAULT_WEEKLY_GOAL = 3;
 // 이 부서만 걷기앱(걸음수) 인증 허용. 그 외는 달리기만.
 export const WALK_DEPARTMENT = '자문회';
 
-// ── 인증 조건 (하나라도 미달이면 불인정) ────────────────
+// ── 인증 조건 (시간 OR 거리/걸음 중 하나만 넘으면 인정) ──
+// 즉 시간과 거리(걷기는 걸음)가 둘 다 미달일 때만 불인정.
 export const CERT = {
-  minMinutes: 20, // 운동시간 20분 이하 → 불인정
-  minDistanceKm: 2, // (달리기) 거리 2km 이하 → 불인정
-  minSteps: 4000, // (걷기) 걸음 4000보 이하 → 불인정
+  minMinutes: 20, // 운동시간 20분 초과면 인정
+  minDistanceKm: 2, // (달리기) 거리 2km 초과면 인정
+  minSteps: 4000, // (걷기) 걸음 4000보 초과면 인정
 };
 
 /**
  * 인증 여부 판정.
+ * 운동시간 OR 거리(걷기는 걸음) 중 하나라도 기준을 넘으면 인정.
  * @param {'run'|'walk'} type
  * @param {{distance:number, durationSec:number, steps:number}} d
  * @returns {{certified:boolean, reason:string|null}}
  */
 export function evaluateCertification(type, d) {
   const minutes = (Number(d.durationSec) || 0) / 60;
-  if (minutes <= CERT.minMinutes) return { certified: false, reason: 'time' };
+  const timeOk = minutes > CERT.minMinutes;
   if (type === 'walk') {
-    if ((Number(d.steps) || 0) <= CERT.minSteps) return { certified: false, reason: 'steps' };
-  } else {
-    if ((Number(d.distance) || 0) <= CERT.minDistanceKm) return { certified: false, reason: 'distance' };
+    const stepsOk = (Number(d.steps) || 0) > CERT.minSteps;
+    if (timeOk || stepsOk) return { certified: true, reason: null };
+    return { certified: false, reason: 'walk' };
   }
-  return { certified: true, reason: null };
+  const distanceOk = (Number(d.distance) || 0) > CERT.minDistanceKm;
+  if (timeOk || distanceOk) return { certified: true, reason: null };
+  return { certified: false, reason: 'run' };
 }
 
 // ── Firestore 컬렉션 이름 ──────────────────────────────

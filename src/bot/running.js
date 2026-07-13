@@ -6,9 +6,8 @@ import { mainMenu, cancelInline, calendarInline, BTN } from './keyboards.js';
 import { WALK_DEPARTMENT, CERT, evaluateCertification } from '../config/constants.js';
 
 const CERT_REASON_TEXT = {
-  time: `· 운동시간이 ${CERT.minMinutes}분을 넘어야 인정돼요`,
-  distance: `· 달리기 거리가 ${CERT.minDistanceKm}km를 넘어야 인정돼요`,
-  steps: `· 걸음이 ${CERT.minSteps.toLocaleString()}보를 넘어야 인정돼요`,
+  run: `· 운동시간 ${CERT.minMinutes}분 또는 거리 ${CERT.minDistanceKm}km 중 하나는 넘어야 인정돼요`,
+  walk: `· 운동시간 ${CERT.minMinutes}분 또는 걸음 ${CERT.minSteps.toLocaleString()}보 중 하나는 넘어야 인정돼요`,
 };
 
 /** "러닝 기록하기" — 먼저 캘린더로 날짜 선택 */
