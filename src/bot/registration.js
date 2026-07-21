@@ -9,7 +9,8 @@ export async function startRegistration(ctx) {
   await setState(ctx.from.id, { step: 'name' });
   await ctx.reply(
     '🏃 강동 러닝프로젝트에 오신 걸 환영합니다!\n\n' +
-      '먼저 등록을 진행할게요.\n\n이름을 입력해주세요.'
+      '먼저 등록을 진행할게요.\n\n이름을 입력해주세요.\n' +
+      '※ 이름 뒤에 A, B 등이 붙는 분들은 꼭 거기까지 표기해주세요.'
   );
 }
 
@@ -22,7 +23,11 @@ export async function handleRegistrationText(ctx, user) {
   const text = (ctx.message.text || '').trim();
 
   if (step === 'name') {
-    if (!text) return ctx.reply('이름을 입력해주세요.'), true;
+    if (!text) {
+      return ctx.reply(
+        '이름을 입력해주세요.\n※ 이름 뒤에 A, B 등이 붙는 분들은 꼭 거기까지 표기해주세요.'
+      ), true;
+    }
     await updateUser(ctx.from.id, { name: text, state: { step: 'department' } });
     await ctx.reply(`반갑습니다, ${text} 님!\n\n소속 부서를 선택해주세요.`, departmentInline());
     return true;
