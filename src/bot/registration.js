@@ -1,5 +1,6 @@
 import { DEPARTMENTS } from '../config/constants.js';
 import { ensureUser, getUser, setState, updateUser } from '../services/users.js';
+import { mergeOfflineInto } from '../services/healthImport.js';
 import { departmentInline, genderInline, mainMenu, BTN } from './keyboards.js';
 
 /** 가입 시작: 이름부터 */
@@ -90,9 +91,17 @@ export function setupRegistrationActions(bot) {
       registered: true,
       state: { step: 'done' },
     });
+    // 건강인증 일괄등록으로 먼저 만들어진 임시 회원이 있으면 기록 병합
+    let merged = 0;
+    try {
+      merged = await mergeOfflineInto(ctx.from.id, { ...user, gender });
+    } catch (e) {
+      console.error('[merge offline]', e);
+    }
     await ctx.reply(
       '🎉 등록이 완료되었습니다!\n\n' +
         `· 이름: ${user.name}\n· 부서: ${user.department}\n· 소속: ${user.unit}\n· 성별: ${gender}\n\n` +
+        (merged ? `💪 그동안 올려주신 건강 프로젝트 인증 ${merged}건이 내 기록에 합쳐졌어요!\n\n` : '') +
         `아래 [${BTN.RECORD}] 버튼으로 러닝을 인증하고, [${BTN.MY_RECORD}]로 내 기록을 확인하세요!`,
       mainMenu()
     );

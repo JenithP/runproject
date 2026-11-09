@@ -19,8 +19,11 @@ export async function weeklyCount(userId, range = thisWeekRange()) {
  * @returns { overallRank, overallTotal, deptRank, deptTotal }
  */
 export async function getRankings(userId) {
-  const snap = await users().where('registered', '==', true).get();
-  const all = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  // 등록 회원 + 건강인증 일괄등록으로 생긴 임시(offline) 회원 포함
+  const snap = await users().get();
+  const all = snap.docs
+    .map((d) => ({ id: d.id, ...d.data() }))
+    .filter((u) => u.registered === true || u.offline === true);
 
   const score = (u) => ({
     count: u.totals?.totalCount || 0,
@@ -146,7 +149,12 @@ export async function listRecordsInRange({ start, end, department, gender } = {}
       name: r.name || '',
       department: r.department || '',
       gender: r.gender || '',
-      type: r.type === 'walk' ? '걷기' : '달리기',
+      type:
+        r.type === 'walk'
+          ? '걷기'
+          : r.type === 'health'
+            ? `건강인증(${r.sport || '기타'})`
+            : '달리기',
       distance: Math.round((Number(r.distance) || 0) * 100) / 100,
       durationMin: Math.round(((Number(r.durationSec) || 0) / 60) * 10) / 10,
       steps: Number(r.steps) || 0,

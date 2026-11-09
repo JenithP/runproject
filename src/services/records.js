@@ -16,7 +16,7 @@ export async function getUserRecords(userId) {
 }
 
 /** 기록 리스트로부터 누적 통계 전체 재계산 (인정된 기록만 집계) */
-function recomputeTotals(all, prevBadges = []) {
+export function recomputeTotals(all, prevBadges = []) {
   const list = all.filter((r) => r.certified !== false); // 불인정 제외
   const totals = {
     totalCount: list.length,
@@ -108,4 +108,19 @@ export async function addRecord(userId, data) {
   await users().doc(String(userId)).set({ totals }, { merge: true });
 
   return { record: { id: ref.id, ...recordDoc }, totals, newlyEarned, isPB, certified };
+}
+
+/**
+ * 사용자 기록 전체로 누적 통계/배지 재계산 후 저장 (일괄 등록·병합 후 호출).
+ * @returns totals
+ */
+export async function refreshUserTotals(userId) {
+  const snap = await users().doc(String(userId)).get();
+  if (!snap.exists) return null;
+  const prevBadges = snap.data().totals?.badges || [];
+  const list = await getUserRecords(userId);
+  const totals = recomputeTotals(list, prevBadges);
+  totals.badges = evaluateBadges(totals, prevBadges, false).earnedIds;
+  await users().doc(String(userId)).set({ totals }, { merge: true });
+  return totals;
 }

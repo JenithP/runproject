@@ -9,6 +9,7 @@ import {
 } from './registration.js';
 import { startRunning, handlePhoto, setupRunningActions } from './running.js';
 import { showMyRecord, showMyInfo } from './myrecord.js';
+import { setupAdmin, handleAdminText } from './admin.js';
 
 export function createBot() {
   const token = process.env.TELEGRAM_BOT_TOKEN;
@@ -42,6 +43,9 @@ export function createBot() {
     }
   });
 
+  // 관리자 (/admin, 건강인증 일괄등록) — 텍스트 라우터보다 먼저 등록
+  setupAdmin(bot);
+
   // 메뉴 버튼
   bot.hears(BTN.RECORD, startRunning);
   bot.hears(BTN.MY_RECORD, showMyRecord);
@@ -69,6 +73,7 @@ export function createBot() {
   // 텍스트 라우터 (메뉴 버튼은 위 hears에서 먼저 처리됨)
   bot.on('text', async (ctx) => {
     const user = await getUser(ctx.from.id);
+    if (await handleAdminText(ctx, user)) return; // 관리자 붙여넣기 모드
     if (!user) {
       await startRegistration(ctx);
       return;
