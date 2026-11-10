@@ -17,6 +17,9 @@ const importInline = (count) =>
     [Markup.button.callback('❌ 취소', 'adm:cancel')],
   ]);
 
+// 이전 상태 저장 시 중첩된 prev 제거
+const bare = (st) => (st ? (({ prev, ...rest }) => rest)(st) : null);
+
 const clip = (s) => (s.length > MAX_MSG ? s.slice(0, MAX_MSG) + '\n…(생략)' : s);
 
 /** 관리자 모드 종료 → 이전 대화 상태 복원 */
@@ -31,8 +34,31 @@ async function showAdminMenu(ctx) {
   await ctx.reply('🛠 관리자 메뉴', adminMenuInline());
 }
 
+// 전각 문자(＠ 등)/앞뒤 공백 차이로 비밀번호가 틀리지 않게 정규화
+const normPw = (s) => String(s || '').normalize('NFKC').trim();
+const checkPw = (input) => !!process.env.ADMIN_PASSWORD && normPw(input) === normPw(process.env.ADMIN_PASSWORD);
+
+/** 비밀번호 확인 후 관리자 지정 + 메뉴 표시 */
+async function grantAdmin(ctx, user, pw, restoreState) {
+  await ctx.deleteMessage().catch(() => {}); // 비밀번호가 채팅에 남지 않게
+  const patch = restoreState ? { state: user?.state?.prev ?? null } : {};
+  if (!checkPw(pw)) {
+    if (restoreState) await updateUser(ctx.from.id, patch);
+    await ctx.reply('비밀번호가 올바르지 않습니다. 다시 /admin 을 입력해주세요.');
+    return;
+  }
+  await updateUser(ctx.from.id, { ...patch, isAdmin: true });
+  await ctx.reply('🔑 관리자로 지정되었습니다. 다음부터는 /admin 만 입력하면 메뉴가 열려요.');
+  await showAdminMenu(ctx);
+}
+
 /** 관리자 모드에서 붙여넣은 텍스트 처리. 처리했으면 true */
 export async function handleAdminText(ctx, user) {
+  // /admin 후 비밀번호를 따로 보낸 경우
+  if (user?.state?.step === 'admin_pw') {
+    await grantAdmin(ctx, user, ctx.message.text, true);
+    return true;
+  }
   if (!user?.isAdmin || user.state?.step !== 'admin_import') return false;
 
   const { entries, errors } = parseHealthPosts(ctx.message.text);
@@ -91,28 +117,23 @@ export function setupAdmin(bot) {
   // /admin <비밀번호> → 관리자 지정, /admin → 관리자 메뉴
   bot.command('admin', async (ctx) => {
     const arg = (ctx.message.text || '').split(/\s+/).slice(1).join(' ').trim();
-    const user = await getUser(ctx.from.id);
+    let user = await getUser(ctx.from.id);
+    if (!user) {
+      const tgName = [ctx.from.first_name, ctx.from.last_name].filter(Boolean).join(' ');
+      user = await ensureUser(ctx.from.id, tgName);
+    }
     if (arg) {
-      // 비밀번호가 채팅에 남지 않게 삭제 시도
-      await ctx.deleteMessage().catch(() => {});
-      if (!process.env.ADMIN_PASSWORD || arg !== process.env.ADMIN_PASSWORD) {
-        await ctx.reply('비밀번호가 올바르지 않습니다.');
-        return;
-      }
-      if (!user) {
-        const tgName = [ctx.from.first_name, ctx.from.last_name].filter(Boolean).join(' ');
-        await ensureUser(ctx.from.id, tgName);
-      }
-      await updateUser(ctx.from.id, { isAdmin: true });
-      await ctx.reply('🔑 관리자로 지정되었습니다. 다음부터는 /admin 만 입력하면 메뉴가 열려요.');
+      await grantAdmin(ctx, user, arg, false);
+      return;
+    }
+    if (user.isAdmin) {
       await showAdminMenu(ctx);
       return;
     }
-    if (!user?.isAdmin) {
-      await ctx.reply('관리자만 사용할 수 있어요. /admin 비밀번호 형식으로 입력해주세요.');
-      return;
-    }
-    await showAdminMenu(ctx);
+    // 비밀번호를 다음 메시지로 받기
+    const prev = bare(user.state?.step === 'admin_pw' ? user.state.prev : user.state);
+    await updateUser(ctx.from.id, { state: { step: 'admin_pw', prev } });
+    await ctx.reply('🔑 관리자 비밀번호를 입력해주세요.');
   });
 
   bot.action('adm:close', async (ctx) => {
@@ -125,7 +146,7 @@ export function setupAdmin(bot) {
     if (!user?.isAdmin) return ctx.answerCbQuery('관리자 전용입니다');
     await ctx.answerCbQuery();
     await ctx.editMessageReplyMarkup(undefined).catch(() => {});
-    const prev = user.state?.step === 'admin_import' ? user.state.prev : user.state ?? null;
+    const prev = bare(user.state?.step === 'admin_import' ? user.state.prev : user.state);
     await updateUser(ctx.from.id, { state: { step: 'admin_import', prev }, importBuffer: [] });
     await ctx.reply(
       '📋 건강인증 일괄등록\n\n' +
