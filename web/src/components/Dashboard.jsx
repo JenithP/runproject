@@ -3,6 +3,12 @@ import * as XLSX from 'xlsx';
 import { api } from '../api.js';
 import { todayStr, fmtDuration, DEPARTMENTS, GENDERS } from '../lib.js';
 
+// 'YYYY-MM-DD' → '11.9'
+const shortDate = (d = '') => {
+  const [, m, day] = d.split('-');
+  return m ? `${Number(m)}.${Number(day)}` : d;
+};
+
 export default function Dashboard() {
   const [start, setStart] = useState(todayStr(-6));
   const [end, setEnd] = useState(todayStr(0));
@@ -13,6 +19,7 @@ export default function Dashboard() {
   const [board, setBoard] = useState([]);
   const [depts, setDepts] = useState([]);
   const [daily, setDaily] = useState([]);
+  const [recs, setRecs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState('');
 
@@ -21,14 +28,16 @@ export default function Dashboard() {
     setErr('');
     try {
       const q = { start, end };
-      const [b, d, day] = await Promise.all([
+      const [b, d, day, rs] = await Promise.all([
         api.leaderboard({ ...q, gender, department, sortBy }),
         api.departments(q),
         api.daily(q),
+        api.records({ ...q, gender, department }),
       ]);
       setBoard(b);
       setDepts(d);
       setDaily(day);
+      setRecs(rs);
     } catch (e) {
       setErr(e.message);
     } finally {
@@ -54,10 +63,11 @@ export default function Dashboard() {
       const rows = await api.records({ start, end, gender, department });
       const data = rows.map((r) => ({
         날짜: r.date,
-        이름: r.name,
         부서: r.department,
+        '지역-구역': r.unit,
+        이름: r.name,
+        종목: r.sport,
         성별: r.gender,
-        종류: r.type,
         '거리(km)': r.distance,
         '시간(분)': r.durationMin,
         걸음수: r.steps,
@@ -68,7 +78,7 @@ export default function Dashboard() {
       }));
       const ws = XLSX.utils.json_to_sheet(data);
       const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, '러닝기록');
+      XLSX.utils.book_append_sheet(wb, ws, '인증기록');
       XLSX.writeFile(wb, `강동러닝_${start}_${end}.xlsx`);
     } catch (e) {
       setErr(e.message);
@@ -132,6 +142,35 @@ export default function Dashboard() {
           <button className="chip" onClick={() => preset(30)}>최근 30일</button>
         </div>
         {err && <div className="error">{err}</div>}
+      </section>
+
+      {/* 인증 기록 (날짜/부서/지역-구역/이름/종목) */}
+      <section className="card">
+        <h2>📋 인증 기록 ({recs.length}건)</h2>
+        {recs.length === 0 ? (
+          <p className="muted">데이터가 없습니다.</p>
+        ) : (
+          <div className="table-scroll">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>날짜</th><th>부서</th><th>지역-구역</th><th>이름</th><th>종목</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recs.map((r) => (
+                  <tr key={r.id} className={r.certified === '불인정' ? 'muted' : ''}>
+                    <td>{shortDate(r.date)}</td>
+                    <td>{r.department}</td>
+                    <td>{r.unit}</td>
+                    <td>{r.name}</td>
+                    <td>{r.sport}{r.certified === '불인정' ? ' (불인정)' : ''}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </section>
 
       {/* 일별 추이 */}

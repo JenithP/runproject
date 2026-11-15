@@ -138,14 +138,21 @@ export async function departmentStats({ start, end } = {}) {
 export async function listRecordsInRange({ start, end, department, gender } = {}) {
   const s = toDateKey(start);
   const e = toDateKey(end);
-  const snap = await records().where('date', '>=', s).where('date', '<=', e).get();
+  const [snap, userSnap] = await Promise.all([
+    records().where('date', '>=', s).where('date', '<=', e).get(),
+    users().get(), // 러닝 기록엔 지역-구역이 없어서 회원 소속(unit)으로 채움
+  ]);
+  const unitOf = new Map(userSnap.docs.map((d) => [d.id, d.data().unit || '']));
   const rows = [];
   for (const doc of snap.docs) {
     const r = doc.data();
     if (department && r.department !== department) continue;
     if (gender && r.gender !== gender) continue;
     rows.push({
+      id: doc.id,
       date: r.date,
+      unit: r.unit || unitOf.get(r.userId) || '',
+      sport: r.type === 'health' ? r.sport || '기타' : r.type === 'walk' ? '걷기' : '달리기',
       name: r.name || '',
       department: r.department || '',
       gender: r.gender || '',

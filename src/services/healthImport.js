@@ -100,13 +100,14 @@ const FIELD_KEYS = {
   일자: 'date',
   부서: 'department',
   반구역: 'unit',
+  지역구역: 'unit',
   구역: 'unit',
   이름: 'name',
   성명: 'name',
   종목: 'sport',
   운동: 'sport',
 };
-const FIELD_RE = /^\s*[-·•*]?\s*(날\s*짜|일\s*자|부\s*서|반\s*구\s*역|구\s*역|이\s*름|성\s*명|종\s*목|운\s*동)\s*[:：]\s*(.*?)\s*$/;
+const FIELD_RE = /^\s*[-·•*]?\s*(날\s*짜|일\s*자|부\s*서|지\s*역\s*[-~/]?\s*구\s*역|반\s*구\s*역|구\s*역|이\s*름|성\s*명|종\s*목|운\s*동)\s*[:：]\s*(.*?)\s*$/;
 const HEADER_RE = /건강\s*프로젝트\s*인증/;
 
 /**
@@ -131,7 +132,7 @@ export function parseHealthPosts(text, ref = now()) {
     }
     const m = line.match(FIELD_RE);
     if (!m) continue;
-    const key = FIELD_KEYS[m[1].replace(/\s+/g, '')];
+    const key = FIELD_KEYS[m[1].replace(/[\s\-~/]/g, '')];
     if (!cur || cur.fields[key] != null) {
       flush();
       cur = { fields: {}, lines: [] };

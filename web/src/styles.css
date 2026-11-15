@@ -114,3 +114,8 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--p
 .login-card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 32px; width: 100%; max-width: 360px; display: flex; flex-direction: column; gap: 12px; text-align: center; }
 .login-card h1 { font-size: 22px; }
 .login-card input { text-align: center; }
+
+/* 인증 기록 표: 길면 스크롤 */
+.table-scroll { max-height: 480px; overflow: auto; }
+.table-scroll thead th { position: sticky; top: 0; background: var(--panel); }
+tr.muted td { opacity: 0.5; }
