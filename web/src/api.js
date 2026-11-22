@@ -29,6 +29,8 @@ export const api = {
   departments: (q) => req('GET', `/api/stats/departments?${new URLSearchParams(clean(q))}`),
   daily: (q) => req('GET', `/api/stats/daily?${new URLSearchParams(clean(q))}`),
   records: (q) => req('GET', `/api/stats/records?${new URLSearchParams(clean(q))}`),
+  updateRecord: (id, b) => req('PATCH', `/api/records/${encodeURIComponent(id)}`, b),
+  deleteRecord: (id) => req('DELETE', `/api/records/${encodeURIComponent(id)}`),
 
   listEvents: () => req('GET', '/api/events'),
   createEvent: (b) => req('POST', '/api/events', b),
@@ -39,6 +41,9 @@ export const api = {
   listAnnouncements: () => req('GET', '/api/announcements'),
   createAnnouncement: (b) => req('POST', '/api/announcements', b),
   deleteAnnouncement: (id) => req('DELETE', `/api/announcements/${id}`),
+
+  getRoster: () => req('GET', '/api/roster'),
+  saveRoster: (month, counts) => req('PUT', `/api/roster/${month}`, counts),
 
   getConfig: () => req('GET', '/api/config'),
   saveConfig: (b) => req('PUT', '/api/config', b),

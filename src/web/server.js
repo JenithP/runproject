@@ -10,7 +10,8 @@ import {
   dailySeries,
   listRecordsInRange,
 } from '../services/stats.js';
-import { getSettings, saveSettings } from '../services/config.js';
+import { getSettings, saveSettings, getRoster, saveRosterMonth } from '../services/config.js';
+import { updateRecordAdmin, deleteRecordAdmin } from '../services/records.js';
 import {
   listEvents,
   createEvent,
@@ -94,6 +95,23 @@ export function createWebApp(bot) {
       const { start, end, gender, department } = req.query;
       res.json(await listRecordsInRange({ start, end, gender, department }));
     })
+  );
+
+  // ── 기록 수정/삭제 (관리자) ──
+  api.patch(
+    '/records/:id',
+    asyncH(async (req, res) => res.json(await updateRecordAdmin(req.params.id, req.body)))
+  );
+  api.delete(
+    '/records/:id',
+    asyncH(async (req, res) => res.json({ ok: await deleteRecordAdmin(req.params.id) }))
+  );
+
+  // ── 부서별 출결재적 ──
+  api.get('/roster', asyncH(async (_req, res) => res.json(await getRoster())));
+  api.put(
+    '/roster/:month',
+    asyncH(async (req, res) => res.json(await saveRosterMonth(req.params.month, req.body)))
   );
 
   // ── 이벤트 ──

@@ -1,4 +1,4 @@
-import { DEPARTMENTS } from '../config/constants.js';
+import { DEPARTMENTS, normalizeDepartment } from '../config/constants.js';
 import { ensureUser, getUser, setState, updateUser } from '../services/users.js';
 import { mergeOfflineInto } from '../services/healthImport.js';
 import { departmentInline, genderInline, mainMenu, BTN } from './keyboards.js';
@@ -29,6 +29,13 @@ export async function handleRegistrationText(ctx, user) {
         '이름을 입력해주세요.\n※ 이름 뒤에 A, B 등이 붙는 분들은 꼭 거기까지 표기해주세요.'
       ), true;
     }
+    // 인증글 전체를 이름 칸에 붙여넣는 경우 방지 (줄바꿈/콜론/너무 긴 입력)
+    if (/[\n:：[\]]/.test(text) || text.length > 12) {
+      await ctx.reply(
+        '이름만 입력해주세요 🙂 (예: 김알곡, 김알곡B)\n※ 인증글은 이름 등록이 끝난 뒤 올려주세요.'
+      );
+      return true;
+    }
     await updateUser(ctx.from.id, { name: text, state: { step: 'department' } });
     await ctx.reply(`반갑습니다, ${text} 님!\n\n소속 부서를 선택해주세요.`, departmentInline());
     return true;
@@ -37,9 +44,9 @@ export async function handleRegistrationText(ctx, user) {
   if (step === 'department') {
     // 인라인 버튼 대신 숫자/이름을 직접 입력한 경우도 허용
     const byNum = DEPARTMENTS[parseInt(text, 10) - 1];
-    const dept = DEPARTMENTS.includes(text) ? text : byNum;
+    const dept = DEPARTMENTS.includes(normalizeDepartment(text)) ? normalizeDepartment(text) : byNum;
     if (!dept) {
-      await ctx.reply('아래 버튼에서 부서를 선택하거나, 1~6 숫자로 입력해주세요.', departmentInline());
+      await ctx.reply(`아래 버튼에서 부서를 선택하거나, 1~${DEPARTMENTS.length} 숫자로 입력해주세요.`, departmentInline());
       return true;
     }
     await saveDepartment(ctx, dept);
@@ -72,9 +79,9 @@ async function saveDepartment(ctx, dept) {
 /** dept:/gender: 인라인 콜백 등록 */
 export function setupRegistrationActions(bot) {
   bot.action(/^dept:(.+)$/, async (ctx) => {
-    const dept = ctx.match[1];
+    const dept = normalizeDepartment(ctx.match[1]); // 예전 버튼(여청년/남청년) → 청년회
     const user = await getUser(ctx.from.id);
-    if (user?.state?.step !== 'department') return ctx.answerCbQuery();
+    if (user?.state?.step !== 'department' || !DEPARTMENTS.includes(dept)) return ctx.answerCbQuery();
     await ctx.answerCbQuery(`${dept} 선택`);
     await ctx.editMessageReplyMarkup(undefined).catch(() => {});
     await saveDepartment(ctx, dept);

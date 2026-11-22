@@ -77,31 +77,41 @@ export async function rangeLeaderboard({ start, end, gender, department, sortBy 
         department: r.department || '',
         gender: r.gender || '',
         count: 0,
-        distance: 0,
-        durationSec: 0,
-        calories: 0,
+        sports: {},
+        days: new Set(),
       });
     }
     const agg = map.get(key);
     agg.count += 1;
-    agg.distance += Number(r.distance) || 0;
-    agg.durationSec += Number(r.durationSec) || 0;
-    agg.calories += Number(r.calories) || 0;
+    const sp = sportOf(r);
+    agg.sports[sp] = (agg.sports[sp] || 0) + 1;
+    agg.days.add(r.date);
   }
 
-  const list = [...map.values()].map((a) => ({
+  const list = [...map.values()].map(({ days, ...a }) => ({
     ...a,
-    distance: Math.round(a.distance * 100) / 100,
+    dayCount: days.size,
+    sports: sortSports(a.sports),
   }));
 
   const sorters = {
-    distance: (a, b) => b.distance - a.distance,
-    time: (a, b) => b.durationSec - a.durationSec,
-    count: (a, b) => b.count - a.count,
+    count: (a, b) => b.count - a.count || b.dayCount - a.dayCount,
+    days: (a, b) => b.dayCount - a.dayCount || b.count - a.count,
+    name: (a, b) => a.name.localeCompare(b.name, 'ko'),
   };
-  list.sort(sorters[sortBy] || sorters.distance);
+  list.sort(sorters[sortBy] || sorters.count);
   return list;
 }
+
+/** 기록의 종목명 (건강인증은 입력 종목, 앱 인증은 달리기/걷기) */
+export const sportOf = (r) =>
+  r.type === 'health' ? r.sport || '기타' : r.type === 'walk' ? '걷기' : '달리기';
+
+/** { 헬스: 3, 달리기: 1 } → [{ sport, count }] (많은 순) */
+const sortSports = (obj) =>
+  Object.entries(obj)
+    .map(([sport, count]) => ({ sport, count }))
+    .sort((a, b) => b.count - a.count);
 
 /** 부서별 통계 (구간) */
 export async function departmentStats({ start, end } = {}) {
@@ -115,23 +125,22 @@ export async function departmentStats({ start, end } = {}) {
     if (r.certified === false) continue; // 불인정 제외
     const key = r.department || '미지정';
     if (!map.has(key)) {
-      map.set(key, { department: key, count: 0, distance: 0, durationSec: 0, members: new Set() });
+      map.set(key, { department: key, count: 0, sports: {}, members: new Set() });
     }
     const agg = map.get(key);
     agg.count += 1;
-    agg.distance += Number(r.distance) || 0;
-    agg.durationSec += Number(r.durationSec) || 0;
+    const sp = sportOf(r);
+    agg.sports[sp] = (agg.sports[sp] || 0) + 1;
     agg.members.add(r.userId);
   }
   return [...map.values()]
     .map((a) => ({
       department: a.department,
       count: a.count,
-      distance: Math.round(a.distance * 100) / 100,
-      durationSec: a.durationSec,
+      sports: sortSports(a.sports),
       memberCount: a.members.size,
     }))
-    .sort((a, b) => b.distance - a.distance);
+    .sort((a, b) => b.count - a.count);
 }
 
 /** 구간 내 원본 기록 목록 (엑셀 내보내기용, 불인정 포함) */
@@ -152,22 +161,13 @@ export async function listRecordsInRange({ start, end, department, gender } = {}
       id: doc.id,
       date: r.date,
       unit: r.unit || unitOf.get(r.userId) || '',
-      sport: r.type === 'health' ? r.sport || '기타' : r.type === 'walk' ? '걷기' : '달리기',
+      sport: sportOf(r),
       name: r.name || '',
       department: r.department || '',
       gender: r.gender || '',
-      type:
-        r.type === 'walk'
-          ? '걷기'
-          : r.type === 'health'
-            ? `건강인증(${r.sport || '기타'})`
-            : '달리기',
-      distance: Math.round((Number(r.distance) || 0) * 100) / 100,
-      durationMin: Math.round(((Number(r.durationSec) || 0) / 60) * 10) / 10,
-      steps: Number(r.steps) || 0,
-      calories: Math.round(Number(r.calories) || 0),
-      pace: r.pace || '',
+      userId: r.userId,
       certified: r.certified === false ? '불인정' : '인정',
+      edited: !!r.editedAt,
       certReason: r.certReason || '',
     });
   }
@@ -185,13 +185,12 @@ export async function dailySeries({ start, end } = {}) {
   for (const doc of snap.docs) {
     const r = doc.data();
     if (r.certified === false) continue; // 불인정 제외
-    if (!map.has(r.date)) map.set(r.date, { date: r.date, count: 0, distance: 0, durationSec: 0 });
+    if (!map.has(r.date)) map.set(r.date, { date: r.date, count: 0, members: new Set() });
     const agg = map.get(r.date);
     agg.count += 1;
-    agg.distance += Number(r.distance) || 0;
-    agg.durationSec += Number(r.durationSec) || 0;
+    agg.members.add(r.userId);
   }
   return [...map.values()]
-    .map((a) => ({ ...a, distance: Math.round(a.distance * 100) / 100 }))
+    .map(({ members, ...a }) => ({ ...a, memberCount: members.size }))
     .sort((a, b) => (a.date < b.date ? -1 : 1));
 }

@@ -124,3 +124,53 @@ export async function refreshUserTotals(userId) {
   await users().doc(String(userId)).set({ totals }, { merge: true });
   return totals;
 }
+
+// ── 관리자 수정/삭제 (웹 대시보드) ─────────────────────
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * 기록 1건 수정. 허용 필드: date, department, unit, name, sport, certified
+ * 종목이 달리기/걷기면 앱 인증 유형 유지, 그 외 종목이면 건강인증(health)으로 저장.
+ */
+export async function updateRecordAdmin(id, body = {}) {
+  const ref = records().doc(String(id));
+  const snap = await ref.get();
+  if (!snap.exists) throw new Error('기록을 찾을 수 없습니다.');
+  const prev = snap.data();
+  const patch = {};
+  if (body.date !== undefined) {
+    if (!DATE_RE.test(body.date)) throw new Error('날짜 형식이 올바르지 않습니다 (YYYY-MM-DD).');
+    patch.date = body.date;
+  }
+  for (const k of ['department', 'unit', 'name']) {
+    if (body[k] !== undefined) patch[k] = String(body[k]).trim() || null;
+  }
+  if (body.sport !== undefined) {
+    const sport = String(body.sport).trim() || '기타';
+    if (sport === '달리기') patch.type = 'run';
+    else if (sport === '걷기') patch.type = 'walk';
+    else patch.type = 'health';
+    patch.sport = patch.type === 'health' ? sport : null;
+  }
+  if (body.certified !== undefined) {
+    patch.certified = body.certified === true || body.certified === '인정';
+    if (patch.certified) patch.certReason = null;
+  }
+  if (!Object.keys(patch).length) return { ok: true };
+  patch.editedAt = FieldValue.serverTimestamp();
+  await ref.update(patch);
+  await refreshUserTotals(prev.userId);
+  return { ok: true };
+}
+
+/** 기록 1건 삭제 + 누적 재계산 */
+export async function deleteRecordAdmin(id) {
+  const ref = records().doc(String(id));
+  const snap = await ref.get();
+  if (!snap.exists) return false;
+  const { userId } = snap.data();
+  await ref.delete();
+  await refreshUserTotals(userId);
+  return true;
+}

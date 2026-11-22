@@ -31,10 +31,9 @@ const idSafe = (s = '') => String(s).replace(/[\s/\\.#$[\]]/g, '');
 const DEPT_ALIASES = {
   자문: ['자문회'],
   장년: ['장년회'],
-  여청: ['여청년'],
-  남청: ['남청년'],
-  청년: ['여청년', '남청년'],
-  청년회: ['여청년', '남청년'],
+  여청: ['청년회'],
+  남청: ['청년회'],
+  청년: ['청년회'],
   부녀: ['부녀회'],
   중진: ['중진교역'],
 };
@@ -49,7 +48,7 @@ export function deptCandidates(raw) {
   return [];
 }
 
-const genderFromDept = (dept) => (dept === '여청년' || dept === '부녀회' ? '여' : dept === '남청년' ? '남' : null);
+const genderFromDept = (dept) => (dept === '부녀회' ? '여' : null);
 
 const nums = (s = '') => (String(s).match(/\d+/g) || []).map(Number);
 

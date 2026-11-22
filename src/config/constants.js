@@ -2,11 +2,14 @@
 export const DEPARTMENTS = [
   '자문회',
   '장년회',
-  '여청년',
-  '남청년',
+  '청년회',
   '부녀회',
   '중진교역',
 ];
+
+// 예전 부서명 → 현재 부서명 (여청년/남청년은 청년회로 통합)
+export const LEGACY_DEPARTMENTS = { 여청년: '청년회', 남청년: '청년회' };
+export const normalizeDepartment = (d) => LEGACY_DEPARTMENTS[d] || d;
 
 // ── 성별 ───────────────────────────────────────────────
 export const GENDERS = ['남', '여'];

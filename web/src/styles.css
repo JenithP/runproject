@@ -119,3 +119,37 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--p
 .table-scroll { max-height: 480px; overflow: auto; }
 .table-scroll thead th { position: sticky; top: 0; background: var(--panel); }
 tr.muted td { opacity: 0.5; }
+
+/* 인증 기록 수정 */
+.row-actions { white-space: nowrap; text-align: right; }
+.row-actions .btn + .btn { margin-left: 4px; }
+.btn.danger { color: var(--danger); }
+.btn.danger:hover:not(:disabled) { border-color: var(--danger); color: var(--danger); }
+tr.editing td { padding-top: 6px; padding-bottom: 6px; }
+tr.editing input, tr.editing select { width: 100%; min-width: 80px; padding: 6px 8px; font-size: 13px; }
+tr.editing td select + input, tr.editing td input + select { margin-top: 4px; }
+.cell-wrap { white-space: normal; word-break: keep-all; }
+.tag { display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 6px; font-size: 11px; background: var(--panel-2); color: var(--muted); border: 1px solid var(--line); }
+.table-scroll td:nth-child(-n+2) { white-space: nowrap; }
+.table-scroll td { max-width: 260px; overflow-wrap: anywhere; }
+.table-scroll td.cell-wrap, .table td.cell-wrap { white-space: normal; min-width: 120px; }
+.table th, .table td { white-space: nowrap; }
+.table td.cell-wrap { white-space: normal; max-width: 260px; overflow-wrap: anywhere; }
+
+/* 부서별 출결재적 / 참여율 */
+.card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.roster-editor { background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 12px; margin: 8px 0; }
+.roster-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; }
+.roster-grid label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
+.roster-actions { margin-top: 10px; display: flex; gap: 6px; }
+.ratecell { width: 40%; }
+.rate { display: flex; align-items: center; gap: 8px; }
+.rate-track, .hbar-track { flex: 1; height: 10px; background: var(--panel-2); border-radius: 999px; overflow: hidden; }
+.rate-fill, .hbar-fill { height: 100%; background: var(--primary); border-radius: 999px; }
+.rate span { min-width: 48px; text-align: right; font-weight: 600; }
+/* 종목별 통계 */
+.hbars { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+.hbar-row { display: grid; grid-template-columns: 110px 1fr 100px; align-items: center; gap: 10px; font-size: 14px; }
+.hbar-val { text-align: right; color: var(--muted); }
+.small { font-size: 12px; }
+@media (max-width: 560px) { .hbar-row { grid-template-columns: 84px 1fr 80px; font-size: 13px; } }
